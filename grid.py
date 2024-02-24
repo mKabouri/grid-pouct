@@ -1,7 +1,7 @@
 import pygame
 import random
 import numpy as np
-from typing import List
+from typing import List, Tuple
 
 import config
 
@@ -12,7 +12,7 @@ ACTIONS = {
     "bottom": 3
 }
 
-class Cell:
+class Cell(object):
     def __init__(self, x: int, y: int, tile_size: int, state: int, is_goal: bool):
         # The number of the state represent its state
         self.state = state
@@ -20,6 +20,14 @@ class Cell:
         self.x = x
         self.y = y
         self.tile_size = tile_size
+
+    @property
+    def is_goal_cell(self) -> bool:
+        return self.is_goal
+
+    @property
+    def get_position(self) -> Tuple:
+        return self.x, self.y
 
     def draw_cell(self, screen: pygame.Surface):
         if self.is_goal:
@@ -43,7 +51,7 @@ class Cell:
             pygame.draw.line(screen, config.BLACK_COLOR, line[0], line[1], wall_thickness)
 
 
-class Grid:
+class Grid(object):
     def __init__(self, width: int, height: int, tile_size: int, nb_states: int) -> None:
         pygame.init()
         self.height = height
@@ -79,15 +87,27 @@ class Grid:
                 cells.append(cell)
         return cells
 
-    def _draw_agent(self):
+    def _draw_agent(self, cells: List[Cell]):
         """
         But if you draw the agent that means that you know where is it ?
+        Todo: Add probabilities here!
         """
-        pass
+        pick_cell = random.choice(cells)
+        while pick_cell.is_goal_cell:
+            pick_cell = random.choice(cells)        
+        pos_x, pos_y = pick_cell.get_position
+        pos_x, pos_y = pos_x*self.tile_size, pos_y*self.tile_size
+        pygame.draw.circle(
+            self.screen,
+            config.AGENT_COLOR,
+            (pos_x + self.tile_size//2, pos_y + self.tile_size//2),
+            self.tile_size//4
+        )
 
-    def draw_grid(self, fps: int):
+    def draw_grid(self, fps: int) -> None:
         clock = pygame.time.Clock()
-        self._draw_cells()
+        cells = self._draw_cells()
+        self._draw_agent(cells)
         running = True
         while running:
             for event in pygame.event.get():
