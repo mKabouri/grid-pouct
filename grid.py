@@ -51,6 +51,7 @@ class Grid(object):
         height: int,
         tile_size: int,
         nb_states: int,
+        render: bool=True,
         possible_actions: Dict=config.ACTIONS,
     ) -> None:
         self.height = height
@@ -64,6 +65,9 @@ class Grid(object):
         self.possible_actions = possible_actions
 
         self.cells = self.get_cells()
+
+        if render:
+            self.draw_grid()
     
     def get_cells(self) -> List[Cell]:
         cells = []
@@ -99,7 +103,9 @@ class Grid(object):
         * You should remember that we are working with pomdp
         so you have to return an observation
         * Rewards are defined here (-1 always) for each time step
-        """        
+        * Observation (observation function ????)
+        * Transition (Transition function ???)
+        """
         movement = {
             "left": (-1, 0),
             "top": (0, -1),
@@ -108,15 +114,18 @@ class Grid(object):
         }
 
         dx, dy = movement.get(action, (0, 0))
-        new_x = self.agent_x + dx*self.tile_size
-        new_y = self.agent_y + dy*self.tile_size
+        new_x = (self.agent_x + dx)*self.tile_size
+        new_y = (self.agent_y + dy)*self.tile_size
 
         if new_x < 0 or new_x >= self.width or new_y < 0 or new_y >= self.height:
             return -1
 
-        self.agent_x = new_x
-        self.agent_y = new_y
+        self.update_agent_position(new_x, new_y)
         return -1
+
+    def update_agent_position(self, new_x, new_y) -> None:
+        self.agent_x = new_x//self.tile_size
+        self.agent_y = new_y//self.tile_size
 
     def _draw_cells(self) -> None:
         for cell in self.cells:
@@ -139,7 +148,7 @@ class Grid(object):
             self.tile_size//4
         )
 
-    def draw_grid(self, fps: int) -> None:
+    def draw_grid(self) -> None:
         clock = pygame.time.Clock()
         self._draw_cells()
         self._init_agent()
@@ -155,7 +164,7 @@ class Grid(object):
                         print("Exiting")
                         running = False
             pygame.display.flip()
-            clock.tick(fps)
+            clock.tick(30)
 
         pygame.quit()
 
@@ -165,4 +174,3 @@ def make_env() -> Grid:
 
 if __name__ == '__main__':
     grid_env = make_env()
-    grid_env.draw_grid(50)
