@@ -1,16 +1,9 @@
 import pygame
 import random
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import config
-
-ACTIONS = {
-    "left": 0,
-    "top": 1,
-    "right": 2,
-    "bottom": 3
-}
 
 class Cell(object):
     def __init__(self, x: int, y: int, tile_size: int, state: int, is_goal: bool):
@@ -52,30 +45,27 @@ class Cell(object):
 
 
 class Grid(object):
-    def __init__(self, width: int, height: int, tile_size: int, nb_states: int) -> None:
-        pygame.init()
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        tile_size: int,
+        nb_states: int,
+        possible_actions: Dict=config.ACTIONS,
+    ) -> None:
         self.height = height
         self.width = width
+        self._init_pygame()
+
         self.tile_size = tile_size
         self.nb_states = nb_states
-        self._init_pygame()
+
         self.goal_state = np.random.choice(self.nb_states)
+        self.possible_actions = possible_actions
 
-    def _init_pygame(self):
-        self.screen = pygame.display.set_mode((self.width, self.height))
-        pygame.display.set_caption(("POMDP GRID"))
-
-    def reset(self):
-        pass
-
-    def step(self, action: str):
-        """
-        You should remember that we are working with pomdp
-        so you have to return an observation
-        """
-        pass
-
-    def _draw_cells(self) -> List[Cell]:
+        self.cells = self.get_cells()
+    
+    def get_cells(self) -> List[Cell]:
         cells = []
         for y in range(self.height//self.tile_size):
             for x in range(self.width//self.tile_size):
@@ -83,20 +73,65 @@ class Grid(object):
                     cell = Cell(x, y, self.tile_size, y*self.height//self.tile_size + x, True)
                 else:
                     cell = Cell(x, y, self.tile_size, y*self.height//self.tile_size + x, False)
-                cell.draw_cell(self.screen)
                 cells.append(cell)
         return cells
 
-    def _draw_agent(self, cells: List[Cell]):
+    @property
+    def get_possible_actions(self):
+        return self.possible_actions
+
+    @property    
+    def get_number_states(self):
+        return self.nb_states
+
+    def _init_pygame(self):
+        pygame.init()
+        # In the + 100 you have to display agent belief where he is vs really where he is 
+        self.screen = pygame.display.set_mode((self.width, self.height+100))
+        self.screen.fill((255, 255, 255))
+        pygame.display.set_caption(("POMDP GRID"))
+
+    def reset(self):
+        pass
+
+    def step(self, action: str):
+        """
+        * You should remember that we are working with pomdp
+        so you have to return an observation
+        * Rewards are defined here (-1 always) for each time step
+        """        
+        movement = {
+            "left": (-1, 0),
+            "top": (0, -1),
+            "right": (1, 0),
+            "bottom": (0, 1)
+        }
+
+        dx, dy = movement.get(action, (0, 0))
+        new_x = self.agent_x + dx*self.tile_size
+        new_y = self.agent_y + dy*self.tile_size
+
+        if new_x < 0 or new_x >= self.width or new_y < 0 or new_y >= self.height:
+            return -1
+
+        self.agent_x = new_x
+        self.agent_y = new_y
+        return -1
+
+    def _draw_cells(self) -> None:
+        for cell in self.cells:
+            cell.draw_cell(self.screen)
+
+    def _init_agent(self):
         """
         But if you draw the agent that means that you know where is it ?
         Todo: Add probabilities here!
         """
-        pick_cell = random.choice(cells)
+        pick_cell = random.choice(self.cells)
         while pick_cell.is_goal_cell:
-            pick_cell = random.choice(cells)        
-        pos_x, pos_y = pick_cell.get_position
-        pos_x, pos_y = pos_x*self.tile_size, pos_y*self.tile_size
+            pick_cell = random.choice(self.cells)        
+        self.agent_x, self.agent_y = pick_cell.get_position
+        pos_x, pos_y = self.agent_x*self.tile_size, self.agent_y*self.tile_size
         pygame.draw.circle(
             self.screen,
             config.AGENT_COLOR,
@@ -106,8 +141,8 @@ class Grid(object):
 
     def draw_grid(self, fps: int) -> None:
         clock = pygame.time.Clock()
-        cells = self._draw_cells()
-        self._draw_agent(cells)
+        self._draw_cells()
+        self._init_agent()
         running = True
         while running:
             for event in pygame.event.get():
@@ -124,6 +159,10 @@ class Grid(object):
 
         pygame.quit()
 
+def make_env() -> Grid:
+    return Grid(config.WIDTH, config.HEIGHT,
+                config.TILE_SIZE, config.NB_STATES)
+
 if __name__ == '__main__':
-    grid_env = Grid(config.WIDTH, config.HEIGHT, config.TILE_SIZE, config.NB_STATES)
+    grid_env = make_env()
     grid_env.draw_grid(50)

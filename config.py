@@ -18,3 +18,9 @@ POSSIBLE_COLORS = [
 BLACK_COLOR = (0, 0, 0)
 
 AGENT_COLOR = (255, 255, 0) # YELLOW
+ACTIONS = {
+    "left": 0,
+    "top": 1,
+    "right": 2,
+    "bottom": 3
+}
