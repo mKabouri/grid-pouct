@@ -13,6 +13,8 @@ class Cell(object):
         self.x = x
         self.y = y
         self.tile_size = tile_size
+        # Color is our only observation
+        self.color = None
 
     @property
     def is_goal_cell(self) -> bool:
@@ -21,16 +23,20 @@ class Cell(object):
     @property
     def get_position(self) -> Tuple:
         return self.x, self.y
+    
+    @property
+    def get_color(self):
+        return self.color
 
     def draw_cell(self, screen: pygame.Surface):
         if self.is_goal:
-            color = config.GOAL_CELL_COLOR
+            self.color = config.GOAL_CELL_COLOR
         else:
-            color = random.choice(config.POSSIBLE_COLORS)
+            self.color = random.choice(config.POSSIBLE_COLORS)
         pos_x, pos_y = self.x*self.tile_size, self.y*self.tile_size
         pygame.draw.rect(
             screen,
-            color,
+            self.color,
             (pos_x, pos_y, self.tile_size, self.tile_size),
         )
         wall_thickness = 2
@@ -45,12 +51,14 @@ class Cell(object):
 
 
 class Grid(object):
+    """
+    The environment knows were the agent is but the agent does not.
+    """
     def __init__(
         self,
         width: int,
         height: int,
         tile_size: int,
-        nb_states: int,
         render: bool=True,
         possible_actions: Dict=config.ACTIONS,
     ) -> None:
@@ -59,9 +67,8 @@ class Grid(object):
         self._init_pygame()
 
         self.tile_size = tile_size
-        self.nb_states = nb_states
 
-        self.goal_state = np.random.choice(self.nb_states)
+        self.goal_state = np.random.choice(self.get_number_states)
         self.possible_actions = possible_actions
 
         self.cells = self.get_cells()
@@ -86,7 +93,7 @@ class Grid(object):
 
     @property    
     def get_number_states(self):
-        return self.nb_states
+        return (self.height//self.tile_size)*(self.width//self.tile_size)
 
     def _init_pygame(self):
         pygame.init()
@@ -105,6 +112,12 @@ class Grid(object):
         * Rewards are defined here (-1 always) for each time step
         * Observation (observation function ????)
         * Transition (Transition function ???)
+        Returns:
+        
+        * Reward
+        * The new observation (Color of the current cell ?)
+        * New belief (new distribution over states ? or it is intern to agent ?)
+        * Done: bool
         """
         movement = {
             "left": (-1, 0),
@@ -117,11 +130,17 @@ class Grid(object):
         new_x = (self.agent_x + dx)*self.tile_size
         new_y = (self.agent_y + dy)*self.tile_size
 
-        if new_x < 0 or new_x >= self.width or new_y < 0 or new_y >= self.height:
-            return -1
+        if new_x < 0 or new_x >= self.width or new_y < 0 or new_y >= self.height:                
+            current_cell = self._get_cell_in(self.agent_x, self.agent_y)
+            return -1, current_cell.get_color, False
 
         self.update_agent_position(new_x, new_y)
-        return -1
+        
+        current_cell = self._get_cell_in(self.agent_x, self.agent_y)
+        if current_cell.is_goal_cell:
+            return 10, current_cell.get_color, True
+
+        return -1, current_cell.get_color, False
 
     def update_agent_position(self, new_x, new_y) -> None:
         self.agent_x = new_x//self.tile_size
@@ -130,6 +149,13 @@ class Grid(object):
     def _draw_cells(self) -> None:
         for cell in self.cells:
             cell.draw_cell(self.screen)
+
+    def _get_cell_in(self, x: int, y: int) -> Cell:
+        if x*self.tile_size < 0 or x*self.tile_size >= self.width or y*self.tile_size < 0 or y*self.tile_size >= self.height:
+            raise ValueError("Index out of bounds.")
+        for cell in self.cells:
+            if cell.get_position == (x, y):
+                return cell
 
     def _init_agent(self):
         """
@@ -147,6 +173,10 @@ class Grid(object):
             (pos_x + self.tile_size//2, pos_y + self.tile_size//2),
             self.tile_size//4
         )
+
+    @property
+    def _get_agent_position(self):
+        return self.agent_x, self.agent_y
 
     def draw_grid(self) -> None:
         clock = pygame.time.Clock()
@@ -170,7 +200,7 @@ class Grid(object):
 
 def make_env() -> Grid:
     return Grid(config.WIDTH, config.HEIGHT,
-                config.TILE_SIZE, config.NB_STATES)
+                config.TILE_SIZE)
 
 if __name__ == '__main__':
     grid_env = make_env()
