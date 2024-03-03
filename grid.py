@@ -80,7 +80,8 @@ class Grid(object):
 
         # Define transition probabilities ??
 
-        if render:
+        self.render = render
+        if self.render:
             self.draw_grid()
     
     def get_cells(self) -> List[Cell]:
@@ -124,7 +125,12 @@ class Grid(object):
         pygame.display.set_caption(("POMDP GRID"))
 
     def reset(self):
-        pass
+        self.goal_state = np.random.choice(self.get_number_states)
+        self._init_pygame()
+        self._init_agent()
+        self.cells = self.get_cells()
+        if self.render:
+            self.draw_grid()
 
     def step(self, action: str):
         """

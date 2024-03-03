@@ -1,5 +1,7 @@
 import numpy as np
 
+import config
+
 """
 POMDP: <S, A, Z, T, R, O>, where:
     * S: states (defined in grid.py ???)
@@ -39,7 +41,7 @@ class RewardModel:
     def __init__(self, n_states, n_actions):
         self.n_states = n_states
         self.n_actions = n_actions
-        self.rewards = np.zeros((n_states, n_actions))
+        self.rewards = np.full((n_states, n_actions), -1)
 
     def set_reward(self, state, action, reward):
         self.rewards[state, action] = reward
@@ -59,6 +61,14 @@ class POMDPModel:
         self.reward_model = RewardModel(n_states, n_actions)
 
     @property
+    def get_nb_states(self):
+        return self.n_states
+
+    @property
+    def get_nb_actions(self):
+        return self.n_actions
+
+    @property
     def get_reward_model(self):
         return self.reward_model
         
@@ -69,3 +79,6 @@ class POMDPModel:
     @property
     def get_observation_model(self):
         return self.observation_model
+
+def make_pomdp_model():
+    return POMDPModel(config.NB_STATES, len(config.ACTIONS), len(config.POSSIBLE_COLORS)+1)
