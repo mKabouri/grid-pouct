@@ -49,10 +49,15 @@ class Cell(object):
         for line in lines:
             pygame.draw.line(screen, config.BLACK_COLOR, line[0], line[1], wall_thickness)
 
+        font = pygame.font.Font('freesansbold.ttf', 32)
+        text_surface = font.render(str(self.state), True, config.BLACK_COLOR)
+        text_rect = text_surface.get_rect(center=(pos_x+self.tile_size//2, pos_y+self.tile_size//2))
+        screen.blit(text_surface, text_rect)
+
 
 class Grid(object):
     """
-    The environment knows were the agent is but the agent does not.
+    The environment knows were the agent is but the agent doesn't.
     """
     def __init__(
         self,
@@ -73,6 +78,8 @@ class Grid(object):
 
         self.cells = self.get_cells()
 
+        # Define transition probabilities ??
+
         if render:
             self.draw_grid()
     
@@ -86,6 +93,20 @@ class Grid(object):
                     cell = Cell(x, y, self.tile_size, y*self.height//self.tile_size + x, False)
                 cells.append(cell)
         return cells
+
+    def coord2number(self, coord: Tuple):
+        return coord[0]*(self.height//self.tile_size) + coord[1]
+
+    def number2coord(self, number: int):
+        cols = self.width//self.tile_size
+        x = number//cols
+        y = number%cols
+        return x, y
+
+    @property
+    def get_current_observation(self):
+        current_cell = self._get_cell_in(self.agent_x, self.agent_y)
+        return current_cell.get_color
 
     @property
     def get_possible_actions(self):
@@ -204,3 +225,6 @@ def make_env() -> Grid:
 
 if __name__ == '__main__':
     grid_env = make_env()
+    print(grid_env.coord2number((0, 1)))
+    print(grid_env.number2coord(1))
+    
