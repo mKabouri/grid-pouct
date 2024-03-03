@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from typing import Tuple, List
 from copy import deepcopy
 
 from grid import Grid
@@ -15,7 +15,14 @@ class Node(object):
     def __init__(self, value: float):
         self.value = value
         self.nb_visits = 0
+        self.history = []
         self.children = []
+
+    def __str__(self) -> str:
+        return f"Node({self.nb_visits}, {self.value}, {len(self.history)}, {len(self.children)})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def add_child(self, child):
         self.children.append(child)
@@ -24,10 +31,17 @@ class SearchTree(object):
     def __init__(self, root: Node) -> None:
         self.root = root
 
-class POUCTAgent(object):
+class POMCPAgent(object):
     """
     """
-    def __init__(self, env: Grid, pomdp_model: POMDPModel):
+    def __init__(
+        self,
+        env: Grid,
+        pomdp_model: POMDPModel,
+        generator,
+        discount_factor: int=1,
+        init_belief: List=None,
+    ):
         """
         * The initial belief is uniform.
         * Note that there is no x and y because
@@ -36,19 +50,24 @@ class POUCTAgent(object):
         """
         self.env = env
         self.pomdp_model = pomdp_model
+        self.discout_factor = discount_factor
+
         self.transition_model = self.pomdp_model.get_transition_model
         self.observation_model = self.pomdp_model.get_observation_model
         # belief starts as a uniform distribution over states
         self.previous_belief = None
-        self.current_belief = [
-            1/self.env.get_number_states for _ in range(self.env.get_number_states)
-        ]
+        if not init_belief:
+            self.current_belief = [
+                1/self.env.get_number_states for _ in range(self.env.get_number_states)
+            ]
+        else:
+            self.current_belief = init_belief
 
         self.possible_actions = self.env.possible_actions
 
         # Sequence of tuples (action, observation)
         self.history = []
-
+        self.generator = generator
         self.search_tree = SearchTree()
 
     def action_str2int(self, action: str) -> int:
@@ -85,16 +104,22 @@ class POUCTAgent(object):
             )
             self.current_belief[state_i] = numerator/denominator
 
-    def search(self, state: int, depth: int):
-        pass
+    def sample_state_from_belief(self):
+        return np.random.choice(len(self.current_belief), p=self.current_belief)
 
-    def simulate(self):
-        pass
+    def search(self):
+        # Add time out here!
+        state = self.sample_state_from_belief()
+        self.simulate(state)
+        # Values over the actions
+        children_values = [v.value for v in self.search_tree.root.children]
+        return np.argmax(children_values)
+
+    def simulate(self, state, depth):
+        if self.discout_factor**depth < 0.005:
+            return 0
 
     def rollout_policy(self, state: int, depth: int):
-        pass
-
-    def learn(self):
         pass
 
     def take_action(self):
@@ -102,3 +127,6 @@ class POUCTAgent(object):
         UCT algorithm
         """
         pass
+
+def make_agent():
+    return POMCPAgent()

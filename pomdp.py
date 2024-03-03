@@ -65,6 +65,10 @@ class POMDPModel:
         return self.n_states
 
     @property
+    def get_nb_observations(self):
+        return self.n_observations
+
+    @property
     def get_nb_actions(self):
         return self.n_actions
 
@@ -81,4 +85,5 @@ class POMDPModel:
         return self.observation_model
 
 def make_pomdp_model():
+    # +1 in n_observations for the goal observation
     return POMDPModel(config.NB_STATES, len(config.ACTIONS), len(config.POSSIBLE_COLORS)+1)

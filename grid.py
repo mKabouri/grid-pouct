@@ -25,7 +25,7 @@ class Cell(object):
         return self.x, self.y
     
     @property
-    def get_color(self):
+    def get_color(self) -> Tuple:
         return self.color
 
     def draw_cell(self, screen: pygame.Surface):
