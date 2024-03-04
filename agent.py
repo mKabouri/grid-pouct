@@ -35,7 +35,7 @@ class Node(object):
     @property
     def get_history(self):
         return self.history
-    
+
     @property
     def get_nb_visits(self):
         return self.nb_visits
@@ -213,6 +213,3 @@ class POMCPAgent(object):
         UCT algorithm
         """
         pass
-
-def make_agent():
-    return POMCPAgent()
