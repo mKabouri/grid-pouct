@@ -7,7 +7,6 @@ from grid import Grid
 from pomdp import POMDPModel
 
 """
-* Init the belief with uniform distribution and then it will be updated
 * A belief is probability distribution over belief b
 * reward R(b, a)
 """
@@ -197,7 +196,7 @@ class POMCPAgent(object):
 
     def rollout_policy(self):
         """
-        Returns an actions randomly (random rollout policy)
+        Returns an action randomly (random policy)
         """
         return self.action_int2str(np.random.choice(len(self.possible_actions)))
 
@@ -209,7 +208,4 @@ class POMCPAgent(object):
         return reward + self.discout_factor*self.rollout(next_state, depth+1)
 
     def take_action(self, observation):
-        """
-        UCT algorithm
-        """
         pass
