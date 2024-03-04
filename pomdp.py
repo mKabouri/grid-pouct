@@ -4,11 +4,11 @@ import config
 
 """
 POMDP: <S, A, Z, T, R, O>, where:
-    * S: states (defined in grid.py ???)
+    * S: states
     * A: actions
-    * Z: observables: (color of the cell?)
+    * Z: observables
     * T: transition function (s, a, s')
-    * R: reward function (s, a) (-1 for each step)
+    * R: reward function (s, a)
     * O: observation function (s', a, z)
 """
 

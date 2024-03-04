@@ -57,7 +57,6 @@ class Cell(object):
 
 class Grid(object):
     """
-    The environment knows were the agent is but the agent doesn't.
     """
     def __init__(
         self,
@@ -134,16 +133,11 @@ class Grid(object):
         self.cells = self.get_cells()
         if self.render:
             self.draw_grid()
+        return self.get_current_observation
 
     def step(self, action: str):
         """
-        * You should remember that we are working with pomdp
-        so you have to return an observation
-        * Rewards are defined here (-1 always) for each time step
-        * Observation (observation function ????)
-        * Transition (Transition function ???)
         Returns:
-        
         * Reward
         * The new observation (Color of the current cell ?)
         * Done: bool
@@ -187,10 +181,6 @@ class Grid(object):
                 return cell
 
     def _init_agent(self):
-        """
-        But if you draw the agent that means that you know where is it ?
-        Todo: Add probabilities here!
-        """
         pick_cell = random.choice(self.cells)
         while pick_cell.is_goal_cell:
             pick_cell = random.choice(self.cells)        
