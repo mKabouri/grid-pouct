@@ -125,6 +125,9 @@ class Grid(object):
         pygame.display.set_caption(("POMDP GRID"))
 
     def reset(self):
+        """
+        Returns first observation
+        """
         self.goal_state = np.random.choice(self.get_number_states)
         self._init_pygame()
         self._init_agent()
@@ -143,7 +146,6 @@ class Grid(object):
         
         * Reward
         * The new observation (Color of the current cell ?)
-        * New belief (new distribution over states ? or it is intern to agent ?)
         * Done: bool
         """
         movement = {
