@@ -7,7 +7,6 @@ import config
 
 class Cell(object):
     def __init__(self, x: int, y: int, tile_size: int, state: int, is_goal: bool):
-        # The number of the state represent its state
         self.state = state
         self.is_goal = is_goal
         self.x = x
@@ -54,7 +53,6 @@ class Cell(object):
         text_rect = text_surface.get_rect(center=(pos_x+self.tile_size//2, pos_y+self.tile_size//2))
         screen.blit(text_surface, text_rect)
 
-
 class Grid(object):
     """
     """
@@ -80,9 +78,7 @@ class Grid(object):
         # Define transition probabilities ??
 
         self.render = render
-        if self.render:
-            self.draw_grid()
-    
+
     def get_cells(self) -> List[Cell]:
         cells = []
         for y in range(self.height//self.tile_size):

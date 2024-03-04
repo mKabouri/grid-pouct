@@ -109,7 +109,7 @@ class POMCPAgent(object):
         # Sequence of tuples (action, observation)
         self.history = []
         self.generator = generator
-        self.search_tree = SearchTree()
+        self.search_tree = SearchTree(Node())
 
     def action_str2int(self, action: str) -> int:
         return self.possible_actions[action]
@@ -151,7 +151,8 @@ class POMCPAgent(object):
         start_time = time.time()
         while time.time() - start_time < self.time_out:
             state = self.sample_state_from_belief()
-            self.simulate(state)
+            print(f"initial state: {state}")
+            self.simulate(state, self.history, depth=5)
         # Values over the actions
         children_values = [
             child.value
@@ -183,7 +184,7 @@ class POMCPAgent(object):
         self.update_belief(best_action, next_obs)
 
         new_history = deepcopy(history)
-        new_history.append(action)
+        new_history.append(best_action)
         new_history.append(next_obs)
         ret = reward + self.discout_factor*self.simulate(next_state,
                                                          new_history,
