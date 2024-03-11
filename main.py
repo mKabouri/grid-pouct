@@ -11,4 +11,6 @@ if __name__ == "__main__":
     pomdp_model = make_pomdp_model()
     generator = Generator(pomdp_model)
     agent = POMCPAgent(env, pomdp_model, generator)
-    agent.search()
+    action = agent.take_action()
+    print(f"Action planned: {action}")
+    reward, new_obs, done = env.step(action)
