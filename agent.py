@@ -7,7 +7,7 @@ from grid import Grid
 from pomdp import POMDPModel
 
 """
-* A belief is probability distribution over belief b
+* A belief is probability distribution over states
 * reward R(b, a)
 """
 
