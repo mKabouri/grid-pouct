@@ -13,7 +13,10 @@ class Cell(object):
         self.y = y
         self.tile_size = tile_size
         # Color is our only observation
-        self.color = None
+        if self.is_goal:
+            self.color = config.GOAL_CELL_COLOR
+        else:
+            self.color = random.choice(config.POSSIBLE_COLORS)
 
     @property
     def is_goal_cell(self) -> bool:
@@ -28,10 +31,6 @@ class Cell(object):
         return self.color
 
     def draw_cell(self, screen: pygame.Surface):
-        if self.is_goal:
-            self.color = config.GOAL_CELL_COLOR
-        else:
-            self.color = random.choice(config.POSSIBLE_COLORS)
         pos_x, pos_y = self.x*self.tile_size, self.y*self.tile_size
         pygame.draw.rect(
             screen,
@@ -74,6 +73,7 @@ class Grid(object):
         self.possible_actions = possible_actions
 
         self.cells = self.get_cells()
+        self._init_agent()
 
         # Define transition probabilities ??
 
@@ -145,20 +145,26 @@ class Grid(object):
             "bottom": (0, 1)
         }
 
-        dx, dy = movement.get(action, (0, 0))
+        dx, dy = movement[action]
         new_x = (self.agent_x + dx)*self.tile_size
         new_y = (self.agent_y + dy)*self.tile_size
 
         if new_x < 0 or new_x >= self.width or new_y < 0 or new_y >= self.height:                
             current_cell = self._get_cell_in(self.agent_x, self.agent_y)
+            if self.render:
+                self.draw_grid()
             return -1, current_cell.get_color, False
 
         self.update_agent_position(new_x, new_y)
         
         current_cell = self._get_cell_in(self.agent_x, self.agent_y)
         if current_cell.is_goal_cell:
+            if self.render:
+                self.draw_grid()
             return 10, current_cell.get_color, True
 
+        if self.render:
+            self.draw_grid()
         return -1, current_cell.get_color, False
 
     def update_agent_position(self, new_x, new_y) -> None:
@@ -181,22 +187,24 @@ class Grid(object):
         while pick_cell.is_goal_cell:
             pick_cell = random.choice(self.cells)        
         self.agent_x, self.agent_y = pick_cell.get_position
-        pos_x, pos_y = self.agent_x*self.tile_size, self.agent_y*self.tile_size
-        pygame.draw.circle(
-            self.screen,
-            config.AGENT_COLOR,
-            (pos_x + self.tile_size//2, pos_y + self.tile_size//2),
-            self.tile_size//4
-        )
 
     @property
     def _get_agent_position(self):
         return self.agent_x, self.agent_y
 
+    def _draw_agent(self) -> None:
+        pos_x, pos_y = self.agent_x*self.tile_size, self.agent_y*self.tile_size
+        pygame.draw.circle(
+            self.screen,
+            config.AGENT_COLOR,
+            (pos_x + self.tile_size // 2, pos_y + self.tile_size // 2),
+            self.tile_size // 4
+        )
+
     def draw_grid(self) -> None:
         clock = pygame.time.Clock()
         self._draw_cells()
-        self._init_agent()
+        self._draw_agent()
         running = True
         while running:
             for event in pygame.event.get():
@@ -211,7 +219,7 @@ class Grid(object):
             pygame.display.flip()
             clock.tick(30)
 
-        pygame.quit()
+        # pygame.quit()
 
 def make_env() -> Grid:
     return Grid(config.WIDTH, config.HEIGHT,
