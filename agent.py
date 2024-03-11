@@ -12,11 +12,22 @@ from pomdp import POMDPModel
 """
 
 class Node(object):
-    def __init__(self, value: float=0, nb_visits: int=0, history: List=[], children: List=[]):
+    def __init__(
+        self,
+        action: str=None, # None for none action nodes
+        parent=None,
+        value: float=0.,
+        nb_visits: int=0,
+        history: List=[],
+        children: List=[]
+    ):
+        self.action = action
+        self.parent = parent
         self.value = value
         self.nb_visits = nb_visits
         self.history = history
         self.children = children
+        # self.belief
 
     def __str__(self) -> str:
         return f"Node({self.nb_visits}, {self.value}, {len(self.history)}, {len(self.children)})"
@@ -26,6 +37,10 @@ class Node(object):
 
     def add_child(self, child):
         self.children.append(child)
+
+    @property
+    def is_leaf(self):
+        return self.children == []
 
     @property
     def get_children(self):
@@ -76,6 +91,7 @@ class POMCPAgent(object):
         env: Grid,
         pomdp_model: POMDPModel,
         generator,
+        initial_state: Node=Node(),
         time_out: float=30,
         discount_factor: int=1,
         init_belief: List=None,
@@ -107,9 +123,10 @@ class POMCPAgent(object):
         self.possible_actions = self.env.possible_actions
 
         # Sequence of tuples (action, observation)
+        # The agent own history
         self.history = []
         self.generator = generator
-        self.search_tree = SearchTree(Node())
+        self.search_tree = SearchTree(initial_state)
 
     def action_str2int(self, action: str) -> int:
         return self.possible_actions[action]
@@ -168,14 +185,14 @@ class POMCPAgent(object):
 
         if not self.search_tree.is_in_tree(history):
             for action in self.possible_actions.keys():
-                current_node.add_child(Node(history=deepcopy(history).append(action)))
+                current_node.add_child(Node(parent=current_node,action=action,
+                                            history=deepcopy(history).append(action)))
             return self.rollout_policy(state, depth)
 
         values = [
             child.value + self.ucb_cst*np.sqrt(np.log(current_node.get_nb_visits)/child.get_nb_visits)
             for child in current_node.children
         ]
-
         best_index = np.argmax(values)
         best_child = current_node.children[best_index]
         best_action = best_child.history[-1]
@@ -208,5 +225,8 @@ class POMCPAgent(object):
         next_state, _, reward = self.generator(state, action)
         return reward + self.discout_factor*self.rollout(next_state, depth+1)
 
-    def take_action(self, observation):
+    def _plan(self):
         pass
+
+    def take_action(self):
+        return self._plan()
