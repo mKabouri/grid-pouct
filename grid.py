@@ -2,6 +2,7 @@ import pygame
 import random
 import numpy as np
 from typing import List, Tuple, Dict
+from pomdp import POMDPModel
 
 import config
 
@@ -60,9 +61,15 @@ class Grid(object):
         width: int,
         height: int,
         tile_size: int,
+        pomdp_model: POMDPModel,
         render: bool=True,
         possible_actions: Dict=config.ACTIONS,
     ) -> None:
+        # POMDP definition for our grid
+        self.pomdp_model = pomdp_model
+        self.transition_model = self.pomdp_model.get_transition_model
+        self.observation_model = self.pomdp_model.get_observation_model
+
         self.height = height
         self.width = width
         self._init_pygame()
@@ -74,8 +81,6 @@ class Grid(object):
 
         self.cells = self.get_cells()
         self._init_agent()
-
-        # Define transition probabilities ??
 
         self.render = render
 
@@ -98,6 +103,11 @@ class Grid(object):
         x = number//cols
         y = number%cols
         return x, y
+
+    @property
+    def is_in_goal(self):
+        current_cell = self._get_cell_in(self.agent_x, self.agent_y)
+        return current_cell.is_goal_cell
 
     @property
     def get_current_observation(self):
@@ -130,6 +140,27 @@ class Grid(object):
         if self.render:
             self.draw_grid()
         return self.get_current_observation
+
+    # Code duplica
+    def action_str2int(self, action: str) -> int:
+        return self.possible_actions[action]
+
+    def action_int2str(self, action: int) -> str:
+        for str_action in self.possible_actions.keys():
+            if self.possible_actions[str_action] == action:
+                return str_action
+
+    def step_po(self, state: int, action: str):
+        """
+        Returns:
+        * Next state based on pomdp dynamics (not returned yet)
+        * Reward
+        * The new observation (Color of the current cell ?)
+        * Done: bool
+        """
+        reward, obs, done = self.step(action)        
+        next_state = self.transition_model.sample_state(state, self.action_str2int(action))
+        return next_state, reward, obs, done        
 
     def step(self, action: str):
         """
@@ -221,9 +252,9 @@ class Grid(object):
 
         # pygame.quit()
 
-def make_env() -> Grid:
+def make_env(pomdp_model: POMDPModel) -> Grid:
     return Grid(config.WIDTH, config.HEIGHT,
-                config.TILE_SIZE)
+                config.TILE_SIZE, pomdp_model)
 
 if __name__ == '__main__':
     grid_env = make_env()

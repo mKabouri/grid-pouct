@@ -12,11 +12,22 @@ POMDP: <S, A, Z, T, R, O>, where:
     * O: observation function (s', a, z)
 """
 
+"""
+* Define state class that contains the observation within that state
+"""
+
 class TransitionModel:
-    def __init__(self, n_states, n_actions):
+    def __init__(self, n_states, n_actions, transition_probs=None):
         self.n_states = n_states
         self.n_actions = n_actions
-        self.transition_probs = np.zeros((n_states, n_actions, n_states))
+        if not transition_probs:
+            self.transition_probs = np.full((n_states, n_actions, n_states), 1/n_states)
+        else:
+            shape = transition_probs.shape
+            if len(shape) != 3:
+                raise ValueError(f"Dim of transition probabilities should be 3")
+            assert shape[0] == n_states and shape[1] == n_actions and shape[2] == n_states
+            self.transition_probs = transition_probs
 
     def set_transition(self, state, action, next_state, probability):
         self.transition_probs[state, action, next_state] = probability
@@ -24,12 +35,15 @@ class TransitionModel:
     def get_transition_prob(self, state, action, next_state):
         return self.transition_probs[state, action, next_state]
 
+    def sample_state(self, state, action):
+        return np.random.choice(self.n_states, p=self.transition_probs[state, action, :])
+
 class ObservationModel:
     def __init__(self, n_states, n_actions, n_observations):
         self.n_states = n_states
         self.n_actions = n_actions
         self.n_observations = n_observations
-        self.observation_probs = np.zeros((n_actions, n_states, n_observations))
+        self.observation_probs = np.full((n_actions, n_states, n_observations), 1/n_observations)
 
     def set_observation(self, action, state, observation, probability):
         self.observation_probs[action, state, observation] = probability

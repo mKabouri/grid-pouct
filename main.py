@@ -5,12 +5,11 @@ from generator import Generator
 
 if __name__ == "__main__":
     print("Start")
-    env = make_env()
+    pomdp_model = make_pomdp_model()
+    env = make_env(pomdp_model)
     obs = env.reset()
     print(obs)
-    pomdp_model = make_pomdp_model()
-    generator = Generator(pomdp_model)
-    agent = POMCPAgent(env, pomdp_model, generator)
+    agent = POMCPAgent(env)
+    print("Planning starts")
     action = agent.take_action()
     print(f"Action planned: {action}")
-    reward, new_obs, done = env.step(action)

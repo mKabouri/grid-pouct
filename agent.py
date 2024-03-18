@@ -4,11 +4,11 @@ from typing import Tuple, List
 from copy import deepcopy
 
 from grid import Grid
-from pomdp import POMDPModel
 
 """
 * A belief is probability distribution over belief b
 * reward R(b, a)
+* Separate action node and observation node
 """
 
 class Node(object):
@@ -19,15 +19,13 @@ class Node(object):
         value: float=0.,
         nb_visits: int=0,
         history: List=[],
-        children: List=[]
     ):
         self.action = action
         self.parent = parent
         self.value = value
         self.nb_visits = nb_visits
         self.history = history
-        self.children = children
-        # self.belief
+        self.children = []
 
     def __str__(self) -> str:
         return f"Node({self.nb_visits}, {self.value}, {len(self.history)}, {len(self.children)})"
@@ -39,7 +37,11 @@ class Node(object):
         self.children.append(child)
 
     @property
-    def is_leaf(self):
+    def is_action_node(self):
+        return self.action != None
+
+    @property
+    def is_leaf(self) -> bool:
         return self.children == []
 
     @property
@@ -47,11 +49,11 @@ class Node(object):
         return self.children
 
     @property
-    def get_history(self):
+    def get_history(self) -> List:
         return self.history
 
     @property
-    def get_nb_visits(self):
+    def get_nb_visits(self) -> int:
         return self.nb_visits
 
 class SearchTree(object):
@@ -75,12 +77,15 @@ class SearchTree(object):
                 return True
         return False
 
+    def prune(self, node: Node):
+        pass
+
     @property
-    def get_root(self):
+    def get_root(self) -> Node:
         return self.root
 
     @property
-    def get_current_node(self):
+    def get_current_node(self) -> Node:
         return self.current_node
 
 class POMCPAgent(object):
@@ -89,13 +94,12 @@ class POMCPAgent(object):
     def __init__(
         self,
         env: Grid,
-        pomdp_model: POMDPModel,
-        generator,
         initial_state: Node=Node(),
         time_out: float=30,
-        discount_factor: int=1,
+        discount_factor: int=0.99,
         init_belief: List=None,
         ucb_cst:float=np.sqrt(2),
+        max_depth: int=5,
     ):
         """
         * The initial belief is uniform.
@@ -104,13 +108,12 @@ class POMCPAgent(object):
         * It has just a belief over states.
         """
         self.env = env
-        self.pomdp_model = pomdp_model
         self.discout_factor = discount_factor
         self.time_out = time_out
         self.ucb_cst = ucb_cst
-
-        self.transition_model = self.pomdp_model.get_transition_model
-        self.observation_model = self.pomdp_model.get_observation_model
+        self.max_depth = max_depth
+        self.total_reward = 0
+        
         # belief starts as a uniform distribution over states
         self.previous_belief = None
         if init_belief:
@@ -125,16 +128,7 @@ class POMCPAgent(object):
         # Sequence of tuples (action, observation)
         # The agent own history
         self.history = []
-        self.generator = generator
         self.search_tree = SearchTree(initial_state)
-
-    def action_str2int(self, action: str) -> int:
-        return self.possible_actions[action]
-
-    def action_int2str(self, action: int) -> str:
-        for str_action in self.possible_actions.keys():
-            if self.possible_actions[str_action] == action:
-                return str_action
 
     def update_belief(self, action: str, observation: Tuple):
         """
@@ -142,13 +136,13 @@ class POMCPAgent(object):
         SE: state estimator
         """
         self.previous_belief = deepcopy(self.current_belief)
-        action = self.action_str2int(action)
+        action = self.env.action_str2int(action)
         for state_i in range(self.env.get_number_states):
             numerator = sum(
                 self.observation_model.get_observation_prob(action, state_i, observation)*
                 self.transition_model.get_transition_prob(state_j, action, state_i)*
                 self.previous_belief[state_i]
-                for state_j in range(self.pomdp_model.get_nb_states)
+                for state_j in range(self.env.get_number_states)
             )
             denominator = sum(
                 self.previous_belief[state_j]*
@@ -157,19 +151,19 @@ class POMCPAgent(object):
                     self.observation_model.get_observation_prob(action, state_k, observation)
                     for state_k in range(self.env.get_number_states)
                 )
-                for state_j in range(self.pomdp_model.get_nb_states)
+                for state_j in range(self.env.get_number_states)
             )
             self.current_belief[state_i] = numerator/denominator
 
-    def sample_state_from_belief(self):
+    def sample_state_from_belief(self) -> float:
         return np.random.choice(len(self.current_belief), p=self.current_belief)
 
-    def search(self):
+    def search(self, history):
         start_time = time.time()
         while time.time() - start_time < self.time_out:
             state = self.sample_state_from_belief()
-            print(f"initial state: {state}")
-            self.simulate(state, self.history, depth=5)
+            print(f"initial state (based on the belief of the agent): {state}")
+            self.simulate(state, history, depth=self.max_depth)
         # Values over the actions
         children_values = [
             child.value
@@ -180,23 +174,23 @@ class POMCPAgent(object):
     def simulate(self, state: int, history: List, depth: int):
         current_node = self.search_tree.get_current_node
 
-        if self.discout_factor**depth < 0.005:
+        if depth < self.max_depth:
             return 0
 
-        if not self.search_tree.is_in_tree(history):
+        if history == [] or not self.search_tree.is_in_tree(history):
             for action in self.possible_actions.keys():
-                current_node.add_child(Node(parent=current_node,action=action,
+                current_node.add_child(Node(parent=current_node, action=action,
                                             history=deepcopy(history).append(action)))
-            return self.rollout_policy(state, depth)
+            return self.rollout(state, history, depth)
 
         values = [
             child.value + self.ucb_cst*np.sqrt(np.log(current_node.get_nb_visits)/child.get_nb_visits)
-            for child in current_node.children
+            for child in current_node.get_children
         ]
         best_index = np.argmax(values)
         best_child = current_node.children[best_index]
         best_action = best_child.history[-1]
-        next_state, next_obs, reward = self.generator(state, best_action)
+        next_state, next_obs, reward = self.env.step_po(state, best_action)
         # Update the belief
         self.update_belief(best_action, next_obs)
 
@@ -212,23 +206,40 @@ class POMCPAgent(object):
 
         return ret
 
-    def rollout_policy(self):
+    def rollout_policy(self, history: List):
         """
         Returns an action randomly (random policy)
         """
-        return self.action_int2str(np.random.choice(len(self.possible_actions)))
+        return self.env.action_int2str(np.random.choice(len(self.possible_actions)))
 
-    def rollout(self, state: int, depth: int):
-        if self.discout_factor**depth < 0.005:
+    def rollout(self, state: int, history: List, depth: int):
+        if depth < self.max_depth:
             return 0
-        action = self.rollout_policy()
-        next_state, _, reward = self.generator(state, action)
-        return reward + self.discout_factor*self.rollout(next_state, depth+1)
+        action = self.rollout_policy(history)
+        next_state, _, reward, _ = self.env.step_po(state, action)
+        return reward + self.discout_factor*self.rollout(next_state, history, depth+1)
 
-    def _plan(self):
-        pass
+    def _plan_action(self) -> str:
+        print("Searching...")
+        action = self.search(self.history)
+        action = self.env.action_int2str(action)
+        return action
 
-    def take_action(self):
-        # Start by planning by pomcp
-        # Then select action
-        pass
+    def take_action(self) -> str:
+        if self.env.is_in_goal:
+            print(f"I am in goal state. I got {self.total_reward} as total reward.")
+            print(f"I will not execute any other action.")
+            return
+        action = self._plan_action()
+        print(f"Action planned: {action}")
+        reward, new_obs, done = self.env.step(action)
+        self.total_reward = reward + self.discout_factor*self.total_reward
+        self.history.append(action)
+        self.history.append(new_obs)
+        # Prune the search tree
+        action_node = None
+        for child in self.search_tree.get_current_node.get_children:
+            if child.action == action:
+                action_node = child
+        self.search_tree.prune(action_node)
+        return action
