@@ -6,7 +6,7 @@ from copy import deepcopy
 from grid import Grid
 
 """
-* A belief is probability distribution over belief b
+* A belief is probability distribution over states
 * reward R(b, a)
 * Separate action node and observation node
 """
